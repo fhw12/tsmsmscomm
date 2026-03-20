@@ -88,9 +88,14 @@ function tsmsmscomm.run(control_data)
     })
 end
 
-function tsmsmscomm.notify(cmd_result)
+function tsmsmscomm.notify(control_data, cmd_result)
     tsmsmscomm.app.conn:notify(
         tsmsmscomm.app.ubus_methods["tsmsmscomm"].__ubusobj, 'result', {
+            trusted_phone = control_data.trusted_phone,
+            trusted_email = control_data.trusted_email,
+            sms_command = control_data.sms_command,
+            shell_command = control_data.shell_command,
+
             run = cmd_result.run,
             result = cmd_result.result,
         }

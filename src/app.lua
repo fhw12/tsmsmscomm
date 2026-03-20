@@ -10,7 +10,6 @@ end)
 
 local ubus = require "ubus"
 local uloop = require "uloop"
--- local uci = require "luci.model.uci".cursor()
 
 local tsmsmscomm = require "tsmsmscomm"
 
@@ -44,42 +43,14 @@ function app.make_ubus()
                             result = "[phone] and [message] are required params.",
                         })
                     else
-                        -- local trusted_phone = ""
-                        -- local trusted_email = ""
-                        -- local sms_command = ""
-                        -- local shell_command = ""
-
-                        -- uci:foreach("tsmsmscomm", "remote_control", function (section)
-                        --     if phone == section.trusted_phone then
-                        --        trusted_phone = section.trusted_phone
-                        --        trusted_email = section.trusted_email
-                        --     end
-                        -- end)
-
-                        -- uci:foreach("tsmsmscomm", "sms_command", function (section)
-                        --     if message == section.sms_command then
-                        --         sms_command = section.sms_command
-                        --         shell_command = section.shell_command
-                        --     end
-                        -- end)
-
-                        -- print(trusted_phone, trusted_email)
-                        -- print(sms_command, shell_command)
+                        app.conn:reply(req, {
+                            status = "started",
+                        })
 
                         local control_data = tsmsmscomm.get_control_data(phone, message)
                         local cmd_result = tsmsmscomm.run(control_data)
 
-                        app.conn:reply(req, {
-                            status = "ok",
-                            -- phone = phone,
-                            -- message = message,
-                            run = cmd_result.run,
-                            result = cmd_result.result,
-                        })
-
-                        print('test: code after reply') -- works
-
-                        tsmsmscomm.notify(cmd_result)
+                        tsmsmscomm.notify(control_data, cmd_result)
                     end
                 end, { phone = ubus.STRING, message = ubus.STRING }
             }
