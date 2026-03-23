@@ -36,6 +36,7 @@ function tsmsmscomm.run(control_data)
         return ({
             run = false,
             result = "Номер телефона отсутствует в списке конфига",
+            tmp_file = "",
         })
     end
 
@@ -44,6 +45,7 @@ function tsmsmscomm.run(control_data)
         return ({
             run = false,
             result = "Команда отсутствует в списке конфига",
+            tmp_file = "",
         })
     end
 
@@ -57,7 +59,9 @@ function tsmsmscomm.run(control_data)
     end
 
 
-    local tmp_file = '/tmp/sms_command_output.txt'
+    -- local tmp_file = '/tmp/sms_command_output.txt'
+    local formattedTime = os.date("%d-%m-%Y_%H_%M_%S")
+    local tmp_file = '/tmp/tsmsmscomm_' .. formattedTime .. '.txt'
     local timeout_seconds = 10
 
     shell_cmd = string.format("%s | tail -c %d", shell_cmd, tmp_memory_half)
@@ -69,23 +73,33 @@ function tsmsmscomm.run(control_data)
         return ({
             run = false,
             result = "Произошел таймаут",
-        })
-    end
-
-    local file = io.open(tmp_file, "r")
-    if file ~= nil then
-        local result = file:read("*a")
-        file:close()
-        return ({
-            run = true,
-            result = result,
+            tmp_file = "",
         })
     end
 
     return ({
-        run = false,
-        result = "Ошибка открытия временного файла для чтения результата",
+        run = true,
+        result = "",
+        tmp_file = tmp_file,
     })
+
+    -- todo: Переместить чтение временного файла в applogic 16_rule
+    -- local file = io.open(tmp_file, "r")
+    -- if file ~= nil then
+    --     local result = file:read("*a")
+    --     file:close()
+    --     return ({
+    --         run = true,
+    --         result = result,
+    --         tmp_file = tmp_file,
+    --     })
+    -- end
+
+    -- return ({
+    --     run = false,
+    --     result = "Ошибка открытия временного файла для чтения результата",
+    --     tmp_file = "",
+    -- })
 end
 
 function tsmsmscomm.notify(control_data, cmd_result)
@@ -98,6 +112,7 @@ function tsmsmscomm.notify(control_data, cmd_result)
 
             run = cmd_result.run,
             result = cmd_result.result,
+            tmp_file = cmd_result.tmp_file,
         }
     )
 end
