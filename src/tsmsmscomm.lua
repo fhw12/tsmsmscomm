@@ -1,4 +1,5 @@
 local uci = require "luci.model.uci".cursor()
+local sys = require "luci.sys"
 
 local tsmsmscomm = {}
 
@@ -33,73 +34,74 @@ end
 
 function tsmsmscomm.run(control_data)
     if control_data.trusted_phone == nil or control_data.trusted_phone == "" then
-        return ({
+        return {
             run = false,
             result = "Номер телефона отсутствует в списке конфига",
             tmp_file = "",
-        })
+        }
     end
 
     local shell_cmd = control_data.shell_command
     if shell_cmd == nil or shell_cmd == "" then
-        return ({
+        return {
             run = false,
             result = "Команда отсутствует в списке конфига",
             tmp_file = "",
-        })
+        }
     end
 
-    local handle = io.popen("df -k /tmp | awk 'NR==2 {print $2}'")
+    local tmp_size_cmd = "df -k /tmp | awk 'NR==2 {print $2}'"
+    local tmp_size_cmd_result = sys.process.exec({ "/bin/sh", "-c", tmp_size_cmd }, true, true, false)
     local tmp_memory_half
-    if handle ~= nil then
-        local kb_value = tonumber(handle:read("*a"))
-        local bytes = kb_value * 1024
-        tmp_memory_half = math.floor(bytes / 2)
-        handle:close()
+
+    if tmp_size_cmd_result and tmp_size_cmd_result.code == 0 and tmp_size_cmd_result.stdout then
+        local kb_value = tonumber(tmp_size_cmd_result.stdout:match("%d+"))
+        if kb_value then
+            local bytes = kb_value * 1024
+            tmp_memory_half = math.floor(bytes / 2)
+        else
+            return {
+                run = false,
+                result = "Ошибка: отсутствует kb_value значение",
+                tmp_file = "",
+            }
+        end
+    else
+        return {
+            run = false,
+            result = "Ошибка: " .. tmp_size_cmd_result.stderr,
+            tmp_file = "",
+        }
     end
 
-
-    -- local tmp_file = '/tmp/sms_command_output.txt'
     local formattedTime = os.date("%d-%m-%Y_%H_%M_%S")
     local tmp_file = '/tmp/tsmsmscomm_' .. formattedTime .. '.txt'
     local timeout_seconds = 10
 
-    shell_cmd = string.format("%s | tail -c %d", shell_cmd, tmp_memory_half)
-    local bash = string.format("timeout %d sh -c '%s' > %s 2>&1", timeout_seconds, shell_cmd, tmp_file)
-    local status = os.execute(bash)
-    local exit_code = math.floor(status / 256)
+    local cmd = string.format("%s | tail -c %d > %s 2>&1", shell_cmd, tmp_memory_half, tmp_file)
+    local result = sys.process.exec({ "/usr/bin/timeout", tostring(timeout_seconds), "/bin/sh", "-c", cmd })
 
-    if exit_code == 124 then
-        return ({
-            run = false,
-            result = "Произошел таймаут",
-            tmp_file = "",
-        })
+    if result and result.code == 124 then
+        if result.code == 0 then
+            return {
+                run = true,
+                result = "", -- Пустое значение для избежания нагрузки на ubus. Applogic читает результат из tmp файла.
+                tmp_file = tmp_file,
+            }
+        elseif result.code == 124 then
+            return {
+                run = false,
+                result = "Произошел таймаут",
+                tmp_file = "",
+            }
+        end
     end
 
-    return ({
-        run = true,
-        result = "",
-        tmp_file = tmp_file,
-    })
-
-    -- todo: Переместить чтение временного файла в applogic 16_rule
-    -- local file = io.open(tmp_file, "r")
-    -- if file ~= nil then
-    --     local result = file:read("*a")
-    --     file:close()
-    --     return ({
-    --         run = true,
-    --         result = result,
-    --         tmp_file = tmp_file,
-    --     })
-    -- end
-
-    -- return ({
-    --     run = false,
-    --     result = "Ошибка открытия временного файла для чтения результата",
-    --     tmp_file = "",
-    -- })
+    return {
+        run = false,
+        result = "Ошибка: отсутствует result значение",
+        tmp_file = "",
+    }
 end
 
 function tsmsmscomm.notify(control_data, cmd_result)
