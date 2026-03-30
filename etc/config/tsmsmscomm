@@ -1,0 +1,11 @@
+config general 'general'
+	option debug '0'
+
+config sms_command
+	option sms_command ''
+	option shell_command ''
+
+config remote_control
+	option trusted_phone ''
+	option trusted_email ''
+
