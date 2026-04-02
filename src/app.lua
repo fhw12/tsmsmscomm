@@ -2,7 +2,7 @@ local signal = require("posix.signal")
 signal.signal(signal.SIGINT, function(signum)
     io.write("\n")
     print("-----------------------")
-    print("Tsmail debug stopped.")
+    print("Tsmsmscomm debug stopped.")
     print("-----------------------")
     io.write("\n")
     os.exit(128 + signum)
@@ -11,7 +11,9 @@ end)
 local ubus = require "ubus"
 local uloop = require "uloop"
 
-local tsmsmscomm = require "tsmsmscomm"
+local tsmsmscomm = require "tsmsmscomm.tsmsmscomm"
+
+local if_debug = require("tsmsmscomm.util").if_debug
 
 local app = {}
 app.conn = nil
@@ -22,10 +24,9 @@ function app.init()
         error("Failed to connect to ubus from tsmsmscomm")
     else
         tsmsmscomm.init(app)
-
-        print("make_ubus start")
+        if_debug("make ubus")
         app.make_ubus()
-        print("make_ubus ok")
+        if_debug("make ubus inited")
     end
 end
 
@@ -37,7 +38,9 @@ function app.make_ubus()
                     local phone = msg["phone"]
                     local message = msg["message"]
 
+                    if_debug("Got ubus 'run' method call")
                     if not (phone and message) then
+                        if_debug("[phone] and [message] are required params")
                         app.conn:reply(req, {
                             status = "error",
                             result = "[phone] and [message] are required params.",
@@ -51,6 +54,11 @@ function app.make_ubus()
                         local cmd_result = tsmsmscomm.run(control_data)
 
                         tsmsmscomm.notify(control_data, cmd_result)
+                        if_debug(
+                            "'Run' method result ( run = \"" .. tostring(cmd_result.run) ..
+                            "\", result = \"" .. tostring(cmd_result.result) ..
+                            "\", tmp_file = \"" .. tostring(cmd_result.tmp_file) .. "\" )"
+                        )
                     end
                 end, { phone = ubus.STRING, message = ubus.STRING }
             }
