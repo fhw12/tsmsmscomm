@@ -81,7 +81,7 @@ function tsmsmscomm.run(control_data)
     local cmd = string.format("%s | tail -c %d > %s 2>&1", shell_cmd, tmp_memory_half, tmp_file)
     local result = sys.process.exec({ "/usr/bin/timeout", tostring(timeout_seconds), "/bin/sh", "-c", cmd })
 
-    if result and result.code == 124 then
+    if result then
         if result.code == 0 then
             return {
                 run = true,
